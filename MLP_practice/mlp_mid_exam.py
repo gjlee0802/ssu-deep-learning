@@ -42,7 +42,6 @@ def show_data(x, t):
                  color=c[i], alpha=0.8)
     plt.grid(True)
 
-'''
 plt.figure(1, figsize=(8, 3.7))
 plt.subplot(1, 2, 1)
 show_data(X_train, Y_train)
@@ -55,7 +54,6 @@ plt.xlim(X_range0)
 plt.ylim(X_range1)
 plt.title('Test Data')
 plt.show()
-'''
 
 # <-----------------------activation func---------------------->
 
@@ -66,11 +64,47 @@ def sigmoid(x):
 
 # <-----------------------MLP---------------------->
 
-# input, 1 hidden with 9 nodes ( 8 + 1 bias ), 1 output layer Layer 2 MLP
+# input, 1 hidden with 9 nodes ( 8 + 1 bias ), 1 output layer. 2L MLP
 # all activation func : sigmoid
 
-lr = 0.05
-epoch = 800
-batch = 64
+# <-----------------------forward func---------------------->
+def forward(U1, U2, P, C, x):
+    N, D = x.shape # D: 입력 노드의 개수, N: 1 배치
+
+    z = np.zeros((N, P+1)) # after pass activation func
+    zsum = np.zeros_like(z) # before pass activation func
+    o = np.zeros((N, C)) # after pass activation func
+    osum = np.zeros_like(o) # before pass activation func
+
+
+    for n in range(N): # 1배치 내부 순회
+        for j in range(P+1):
+            zsum[n,j] = x
+        
+    return o, osum, z, zsum
 
 # <-----------------------backprop func---------------------->
+# U1: weights from input Layer to hidden Layer
+# U2: weights from hidden Layer to output Layer
+# P: number of hidden layer's nodes (excluding bias node)
+# C: number of output layer's nodes
+# x: inputs
+# y: targets
+def dMSE_FNN(U1, U2, P, C, x, y):
+    dU1_grads = np.zeros_like(U1)   # U1의 gradients
+    dU2_grads = np.zeros_like(U2)   # U2의 gradients
+    delta_err = np.zeros(C)         # 출력층 노드의 입력측에서의 err
+    eta_err = np.zeros(P+1)         # 은닉층 노드의 입력측에서의 err
+
+    o, osum, z, zsum = forward(U1, U2, P, C, x)
+    delta_err[k] = -1 * (y[k] - o[k])
+
+    
+
+# <-----------------------training func---------------------->    
+lr = 0.05
+epoch = 800
+batch_size = 64
+number_of_batch = X_train[0] // batch_size
+def trainingMLP():
+    pass
