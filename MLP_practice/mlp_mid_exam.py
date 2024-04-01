@@ -11,8 +11,9 @@ X = np.zeros((total_num, 2))
 X_range0 = [-3, 3] # X0의 범위, 표시용
 X_range1 = [-3, 3] # X1의 범위, 표시용
 Mu = np.array([[-0.5, -0.5], [0.5, 1.0]]) # 분포의 중심
-Sig = np.array([[0.7, 0.7], [0.8, 0.3]]) # 분포의 분산
+Sig = np.array([[0.5, 0.5], [0.5, 0.2]]) # 분포의 분산
 Pi = np.array([0.5, 1.0]) # 각 분포에 대한 비율
+
 for n in range(total_num):
     wk = np.random.rand()
     for k in range(K):
@@ -24,13 +25,12 @@ for n in range(total_num):
         Mu[Y[n, :] == 1, k]
 
 # training dataset 800 sample
-X_train = X[:801]
-Y_train = Y[:801]
+X_train = X[:800]
+Y_train = Y[:800]
 
 # test datset 200 sample
-X_test = X[799:]
-Y_test = Y[799:]
-
+X_test = X[800:]
+Y_test = Y[800:]
 
 def show_data(x, t):
     wk, n = t.shape
@@ -153,8 +153,8 @@ def dMSE_FNN(U1, U2, P, C, x, y):
 
 def mse_cal(U1, U2, P, C, X, Y):
     N, D = X_test.shape
-    output, _, _, _ = forward(U1, U2, P, C, X)
-    mse = np.square(Y.reshape(-1)- output.reshape(-1)).mean()
+    o, _, _, _ = forward(U1, U2, P, C, X)
+    mse = np.square(Y.reshape(-1) - o.reshape(-1)).mean()
     return mse
 
 # <-----------------------training func---------------------->    
@@ -166,7 +166,7 @@ def trainingMLP(U1, U2, P, C, X_train, X_test, Y_train, Y_test):
     number_of_batch = X_train.shape[0]//batch_size
     
     # values for input dataset
-    D = X_train.shape[0]
+    D = X_train.shape[1]
     sIdx = np.arange(X_train.shape[0])
     
     # list for saving errors
@@ -194,11 +194,12 @@ def trainingMLP(U1, U2, P, C, X_train, X_test, Y_train, Y_test):
             # U1 weights 업데이트
             for j in range(P): # 은닉층 노드 지정에 해당 (U2에는 은닉층 bias 가중치 포함)
                 for i in range(D+1): # 입력층 노드 지정에 해당 (U1에는 입력층 bias 가중치 포함)
-                    U1[j,i] = U1[j,i] - lr * U1grads[i,j]
+                    U1[j,i] = U1[j,i] - lr * U1grads[j,i]
                     
         # calc MSE per 1 epoch
         err_train = mse_cal(U1, U2, P, C, X_train, Y_train)
         err_test = mse_cal(U1, U2, P, C, X_test, Y_test)
+        print(f'err_train : {err_train}\t|\terr_test : {err_test}')
         err_train_list.append(err_train)
         err_test_list.append(err_test)
         
@@ -214,7 +215,10 @@ def trainingMLP(U1, U2, P, C, X_train, X_test, Y_train, Y_test):
     
 P = 8
 N, D = X_train.shape
-C = 1
+C = 2
+
+print(f'N: {N} | D: {D} | P: {P} | C: {C}')
+np.random.seed(seed=100) # 난수를 고정
 U1_weights = np.random.randn(P*(D+1))
 U1_weights = U1_weights.reshape(P,D+1)
 U2_weights = np.random.randn(C*(P+1))
