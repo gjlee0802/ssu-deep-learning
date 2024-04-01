@@ -62,9 +62,15 @@ def sigmoid(x):
     y = 1 / (1 + np.exp(-x))
     return y
 
+# 시그모이드 도함수
+def diff_sigmoid(x):
+    diff = sigmoid(x) * (1 - sigmoid(x))
+    
+    return diff
+
 # <-----------------------MLP---------------------->
 
-# input, 1 hidden with 9 nodes ( 8 + 1 bias ), 1 output layer. 2L MLP
+# 1 hidden layer with 9 nodes ( 8 + 1 bias ), 1 output layer. 2L MLP
 # all activation func : sigmoid
 
 # <-----------------------forward func---------------------->
@@ -79,15 +85,15 @@ def forward(U1, U2, P, C, x):
 
     for n in range(N): # 1배치 내부 순회
         # j번째 은닉노드로 향하는 계산 (따라서 j에 0은 포함되지 않음, 0~P)
-        for j in range(1, P+1): 
+        for j in range(P): 
             input_bias = [1.]
             # 여기선 input layer의 bias가 계산에 이용됨
-            zsum[n,j] = np.dot(np.concatenate((input_bias, x[n]), axis = 0), U1[j]) 
+            zsum[n,j+1] = np.dot(np.concatenate((input_bias, x[n]), axis = 0), U1[j+1]) 
             # apply activation func
-            z[n,j] = sigmoid(zsum[n,j])
+            z[n,j+1] = sigmoid(zsum[n,j+1])
             
         # k번째 출력노드로 향하는 계산
-        for k in range(1, C+1):
+        for k in range(C):
             hidden_bias = [1.]
             # 여기선 hidden layer의 bias가 계산에 이용됨
             osum[n,k] = np.dot(np.concatenate((hidden_bias, z[n]), axis = 0), U2[k])
@@ -105,13 +111,41 @@ def forward(U1, U2, P, C, x):
 # x: inputs
 # y: targets
 def dMSE_FNN(U1, U2, P, C, x, y):
+    N, D = x.shape
     dU1_grads = np.zeros_like(U1)   # U1의 gradients
     dU2_grads = np.zeros_like(U2)   # U2의 gradients
+    
     delta_err = np.zeros(C)         # 출력층 노드의 입력측에서의 err
-    eta_err = np.zeros(P+1)         # 은닉층 노드의 입력측에서의 err
-
+    eta_err = np.zeros(P)         # 은닉층 노드의 입력측에서의 err, bias에 대한 계산은 불필요
+    # delta_err[0] -> 은닉층의 1번째 노드의 입력측에서의 err
+    # eta_err[0] -> 은닉층의 1번째 노드의 입력측에서의 err
     o, osum, z, zsum = forward(U1, U2, P, C, x)
-    delta_err[k] = -1 * (y[k] - o[k])
+    
+    for n in range(N):
+        # 출력층 노드에서의 delta error 계산
+        for k in range(C):
+            delta_err[k] = -1 * (y[n, k] - o[n, k]) * diff_sigmoid(osum[n, k])
+        
+        # 은닉층 노드에서의 eta error 계산
+        sum_err = np.zeros_like(eta_err)
+        for j in range(P):
+            for k in range(C):
+                # U2는 은닉층의 bias를 0번째에 포함함 -> j+1 : 은닉 bias 가중치 제외
+                sum_err[j] = sum_err[j] + delta_err[k] * U2[k, j+1]
+            eta_err[j] = diff_sigmoid(zsum[n, j+1]) * sum_err[j]
+        
+        
+        # 출력층 노드와 은닉층 노드를 연결하는 edge의 가중치 gradients (dU2_grads) 계산
+        hidden_bias = [1.]
+        for k in range(C):
+            for j in range(P):
+                dU2_grads[k,j] = dU2_grads[k,j] - delta_err[k]/N * np.concatenate((input_bias, z[n,j]), axis = 0)
+                
+        # 은닉층 노드와 입력층 노드를 연결하는 edge의 가중치 gradients (dU1_grads) 계산
+        input_bias = [1.]
+        for j in range(P):
+            for i in range(D+1):
+                dU1_grads[j,i] = dU1_grads[j,i] - eta_err[j]/N * np.concatenate((input_bias, x[n]), axis = 0)
 
     return dU1_grads, dU2_grads
     
@@ -121,5 +155,6 @@ lr = 0.05
 epoch = 800
 batch_size = 64
 number_of_batch = X_train[0] // batch_size
-def trainingMLP():
+def trainingMLP(U1, U2, P, C, X_train, X_test, Y_train, Y_test):
+    #for e in range(epoch):
     pass
