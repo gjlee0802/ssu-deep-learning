@@ -69,7 +69,7 @@ def sigmoid(x):
 
 # <-----------------------forward func---------------------->
 def forward(U1, U2, P, C, x):
-    N, D = x.shape # D: 입력 노드의 개수, N: 1 배치
+    N, D = x.shape # D: number of input nodes, N: 1 batch
 
     z = np.zeros((N, P+1)) # after pass activation func
     zsum = np.zeros_like(z) # before pass activation func
@@ -78,10 +78,24 @@ def forward(U1, U2, P, C, x):
 
 
     for n in range(N): # 1배치 내부 순회
-        for j in range(P+1):
-            zsum[n,j] = x
-        
+        # j번째 은닉노드로 향하는 계산 (따라서 j에 0은 포함되지 않음, 0~P)
+        for j in range(1, P+1): 
+            input_bias = [1.]
+            # 여기선 input layer의 bias가 계산에 이용됨
+            zsum[n,j] = np.dot(np.concatenate((input_bias, x[n]), axis = 0), U1[j]) 
+            # apply activation func
+            z[n,j] = sigmoid(zsum[n,j])
+            
+        # k번째 출력노드로 향하는 계산
+        for k in range(1, C+1):
+            hidden_bias = [1.]
+            # 여기선 hidden layer의 bias가 계산에 이용됨
+            osum[n,k] = np.dot(np.concatenate((hidden_bias, z[n]), axis = 0), U2[k])
+            # apply activation func
+            o[n,k] = sigmoid(osum[n,k])
+    
     return o, osum, z, zsum
+
 
 # <-----------------------backprop func---------------------->
 # U1: weights from input Layer to hidden Layer
@@ -99,6 +113,7 @@ def dMSE_FNN(U1, U2, P, C, x, y):
     o, osum, z, zsum = forward(U1, U2, P, C, x)
     delta_err[k] = -1 * (y[k] - o[k])
 
+    return dU1_grads, dU2_grads
     
 
 # <-----------------------training func---------------------->    
