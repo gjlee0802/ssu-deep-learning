@@ -21,6 +21,10 @@ def MLP_forward(U1, U2, P, C, x):
         for j in range(P):
             zsum[n, j+1] = np.dot(U1[j],np.r_[1,x[n]])
             z[n,j+1] = Sigmoid(zsum[n, j+1])
+        # 순환문 아래의 행렬식으로 가능
+        #zsum[n,1:] = np.dot(U1, np.r_[1, x[n]])
+        #z[n] = Sigmoid(zsum[n])
+            
         #출력층 계산
         for k in range(C):
             osum[n, k] = np.dot(U2[k],z[n])
@@ -53,7 +57,7 @@ def MLP_backward(U1, U2, P, C, x, y):
         # 출력 node와 은닉층 node를 연결하는 edge의 weight 미분값을 계산       
         for k in range(C):
             for j in range(P+1):
-                dU2[k,j] = dU2[k,j] - z[n,j]*delta[k]/N
+                dU2[k,j] = dU2[k,j] - z[n,j]*delta[k]/N # 배치 단위의 delta를 더한 후에 N으로 나눠 평균값을 사용
                 
         # 은닉층 node와 입력층 node를 연결하는 edge의 weight 미분값을 계산
         x_ = np.r_[1,x[n]]
@@ -72,22 +76,22 @@ def mse_cal(U1, U2, P, C, X, Y):
 np.random.seed(seed=1) # 난수를 고정
 N = 400 # 데이터의 수
 K = 2 # 분포의 수
-Y = np.zeros((N, 2), dtype=np.uint8)
+Y = np.zeros((N, 2), dtype=np.uint8) # 분류목적으로 target은 One-hot encoding 방식으로 표현 1->[1,0], 2->[0,1]
 X = np.zeros((N, 2))
 X_range0 = [-3, 3] # X0의 범위, 표시용
 X_range1 = [-3, 3] # X1의 범위, 표시용
-Mu = np.array([[-0.5, -0.5], [0.5, 1.0]]) # 분포의 중심
-Sig = np.array([[0.7, 0.7], [0.8, 0.3]]) # 분포의 분산
-Pi = np.array([0.5, 1.0]) # 각 분포에 대한 비율
+Mu = np.array([[-0.5, -0.5], [0.5, 1.0]]) # 분포의 중심, [X1 평균값, X2 평균값]으로 하나의 중심을 표현
+Sig = np.array([[0.7, 0.7], [0.8, 0.3]]) # 분포의 분산 (정확히는 표준편차)
+Pi = np.array([0.5, 1.0]) # 각 분포에 대한 비율, 0 ~ 0.5 -> Class 0, 0.5 ~ 1.0 -> Class 1
 for n in range(N):
     wk = np.random.rand()
     for k in range(K):
         if wk < Pi[k]:
-            Y[n, k] = 1
+            Y[n, k] = 1 # Pi 비율을 참조하여 target 값 결정
             break
-    for k in range(K):
-        X[n, k] = np.random.randn() * Sig[Y[n, :] == 1, k] + \
-        Mu[Y[n, :] == 1, k]
+    # 가우시안 샘플링
+    for k in range(K): 
+        X[n, k] = np.random.randn() * Sig[Y[n, :] == 1, k] + Mu[Y[n, :] == 1, k] # 랜덤값 * 분산 + 평균값(이동)
 
 
 # -------- 2 분류 데이터를 테스트 훈련 데이터로 분할
@@ -104,7 +108,7 @@ np.savez('class_data.npz', X_train=X_train, Y_train=Y_train,
          X_test=X_test, Y_test=Y_test,
          X_range0=X_range0, X_range1=X_range1)
 
-
+# 결정 경계 시각화 함수
 def Show_MLP_Contour(U1, U2, P, C):
     xn = 60 #등고선 표시 해상도
     x0 = np.linspace(X_range0[0],X_range0[1], xn)
@@ -162,8 +166,8 @@ U2 = U2.reshape(C,P+1)
 
 rho = 0.01 # learning rate
 epoch = 300
-N, D = X_train.shape #traing dataset size
-batch_size = 1
+N, D = X_train.shape #training dataset size
+batch_size = 1 # batch_size = 1 will be Stochastic method!!!
 batch_num = X_train.shape[0] // batch_size
 sIdx = np.arange(X_train.shape[0])
 error_train = []
@@ -172,7 +176,7 @@ startTime = time.time()
 for e in range(epoch):
     print(f"The number of Epoch:{e:04d}\n")
     
-    np.random.shuffle(sIdx)    #traing dataset X_train와 Y_train를 같은 순번으로 shuffing시킴
+    np.random.shuffle(sIdx)    #training dataset X_train와 Y_train를 같은 순번으로 shuffing시킴
     X_train = X_train[sIdx]
     Y_train = Y_train[sIdx]
     
@@ -186,11 +190,14 @@ for e in range(epoch):
         for k in range(C):
             for j in range(P+1):
                 U2[k,j] = U2[k,j] - rho*dU2[k,j]
+        #위의 for문 대신 아래의 한줄로 연산 가능
         #U2 = U2 -rho*dU2
+        
         #U1 행렬을 업데이트
         for j in range(P):
             for i in range(D+1):
                 U1[j, i] = U1[j,i] - rho*dU1[j,i]
+        #위의 for문 대신 아래의 한줄로 연산 가능
         #U1 = U1 -rho*dU1                
     
     e_train = mse_cal(U1, U2, P, C, X_train, Y_train)
@@ -214,14 +221,19 @@ plt.plot(error_test,'cornflowerblue', label='test')
 plt.legend()
 plt.show()
 
-
+# 학습이 끝난 후 inference 과정, 모델 평가
 infer_train, _, _, _ = MLP_forward(U1,U2,P,C,X_train)
 infer_test, _, _, _ = MLP_forward(U1,U2,P,C,X_test)
 
+# 확률값이 더 큰 값을 갖게 하는 인덱스를 계산하여 부류를 결정, axis=1 -> 샘플마다 argmax 수행
 maxOutputIndex_train = np.argmax(infer_train, axis=1)
 maxOutputIndex_test = np.argmax(infer_test, axis=1)
 
-onehotOutput_train = np.eye(Y_train.shape[1])[maxOutputIndex_train]
+# 원핫 인코딩 표현으로 변환
+# 아래의 Identity matrix에서 행을 선택하여 one-hot encoding으로 변환
+#[[1 0],
+# [0 1]]
+onehotOutput_train = np.eye(Y_train.shape[1])[maxOutputIndex_train] # '0' class -> [1,0], '1' class -> [0,1]
 onehotOutput_test = np.eye(Y_train.shape[1])[maxOutputIndex_test]
 
 maxTargetIndex_train = np.argmax(Y_train, axis=1)
