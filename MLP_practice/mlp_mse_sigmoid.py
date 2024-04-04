@@ -65,7 +65,7 @@ def MLP_backward(U1, U2, P, C, x, y):
             for i in range(D+1):
                 dU1[j,i] = dU1[j,i] - x_[i]*eta[j]/N
 
-    return dU1, dU2    
+    return dU1, dU2
 
 def mse_cal(U1, U2, P, C, X, Y):
     N, D = X_test.shape
@@ -182,9 +182,11 @@ for e in range(epoch):
     
     for n in range(batch_num):
         if(n < (batch_num-1)):
-            dU1, dU2 = MLP_backward(U1, U2, P, C, X_train[n:n+batch_size], Y_train[n:n+batch_size])
+            #dU1, dU2 = MLP_backward(U1, U2, P, C, X_train[n:n+batch_size], Y_train[n:n+batch_size])
+            dU1, dU2 = MLP_backward(U1, U2, P, C, X_train[n*batch_size:n*batch_size+batch_size], Y_train[n*batch_size:n*batch_size+batch_size])
         else:
-            dU1, dU2 = MLP_backward(U1, U2, P, C, X_train[n:], Y_train[n:])
+            #dU1, dU2 = MLP_backward(U1, U2, P, C, X_train[n:], Y_train[n:])
+            U1, dU2 = MLP_backward(U1, U2, P, C, X_train[n*batch_size:], Y_train[n*batch_size:])
         
         # U2 행렬을 업데이트               
         for k in range(C):

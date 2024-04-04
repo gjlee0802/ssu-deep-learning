@@ -52,6 +52,7 @@ def MLP_backward(U1, U2, P, C, x, y):
         # 출력층 node의 입력에서 에러값 delta 계산
         for k in range(C):
             delta[k] = (y[n,k]-o[n,k])*deriv_Relu(osum[n,k])
+        #delta = (y[n] - o[n]) * deriv_Relu(o[n])
             
         # 은닉층 node의 입력에서 에러값 eta 계산
         sum_err = np.zeros_like(eta)
@@ -59,13 +60,13 @@ def MLP_backward(U1, U2, P, C, x, y):
         for j in range(P):
             for k in range(C):
                 sum_err[j] = sum_err[j] + U2[k,j+1]*delta[k] #은닉층 j번째 node의 출력에 유입되는 에러값을 계산
-            eta[j] = z[n,j+1]*(1-z[n,j+1])*sum_err[j] #은닉층 j번째 node의 입력의 에러값 계산
+            eta[j] = z[n,j+1]*(1-z[n,j+1])*sum_err[j] #은닉층 j번째 node의 입력의 에러값 계산, 시그모이드 함수의 미분값
         
         # 출력 node와 은닉층 node를 연결하는 edge의 weight 미분값을 계산       
         for k in range(C):
             for j in range(P+1):
-                dU2[k,j] = dU2[k,j] - z[n,j]*delta[k]/N
-                
+                dU2[k,j] = dU2[k,j] - z[n,j]*delta[k]/N # N으로 나눠 delta의 평균
+        
         # 은닉층 node와 입력층 node를 연결하는 edge의 weight 미분값을 계산
         x_ = np.r_[1,x[n]]
         for j in range(P):

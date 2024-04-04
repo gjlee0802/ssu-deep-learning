@@ -92,7 +92,7 @@ def mse_cal(U1, U2, P, C, X, Y):
 def ce_cal(U1, U2, P, C, X, Y):
     N, D = X_test.shape
     output, _, _, _ = MLP_forward(U1, U2, P, C, X)
-    ce = -np.dot(np.log(output.reshape(-1)), Y.reshape(-1))/N
+    ce = -np.dot(np.log(output.reshape(-1)), Y.reshape(-1))/N # error 계산
     return ce
 
 np.random.seed(seed=100) # 난수를 고정

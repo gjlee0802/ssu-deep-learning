@@ -11,7 +11,7 @@ X = np.zeros((total_num, 2))
 X_range0 = [-3, 3] # X0의 범위, 표시용
 X_range1 = [-3, 3] # X1의 범위, 표시용
 Mu = np.array([[-0.5, -0.5], [0.5, 1.0]]) # 분포의 중심
-Sig = np.array([[0.5, 0.5], [0.5, 0.2]]) # 분포의 분산
+Sig = np.array([[0.5, 0.5], [0.5, 0.2]]) # 분포의 분산 (정확히는 표준편차)
 Pi = np.array([0.5, 1.0]) # 각 분포에 대한 비율
 
 for n in range(total_num):
@@ -64,8 +64,8 @@ def sigmoid(x):
 
 # 시그모이드 도함수
 def diff_sigmoid(x):
-    diff = sigmoid(x) * (1 - sigmoid(x))
-    
+    #diff = sigmoid(x) * (1 - sigmoid(x)) # x가 osum / zsum일 때
+    diff = x * (1 - x) # x가 o / z일 때
     return diff
 
 # <-----------------------MLP---------------------->
@@ -124,7 +124,7 @@ def dMSE_FNN(U1, U2, P, C, x, y):
     for n in range(N):
         # 출력층 노드에서의 delta error 계산
         for k in range(C):
-            delta_err[k] = -1 * (y[n, k] - o[n, k]) * diff_sigmoid(osum[n, k])
+            delta_err[k] = -1 * (y[n, k] - o[n, k]) * diff_sigmoid(o[n, k])
         
         # 은닉층 노드에서의 eta error 계산
         sum_err = np.zeros_like(eta_err)
@@ -132,7 +132,7 @@ def dMSE_FNN(U1, U2, P, C, x, y):
             for k in range(C):
                 # U2는 은닉층의 bias를 0번째에 포함함 -> j+1 : 은닉 bias 가중치 제외
                 sum_err[j] = sum_err[j] + delta_err[k] * U2[k, j+1]
-            eta_err[j] = diff_sigmoid(zsum[n, j+1]) * sum_err[j]
+            eta_err[j] = diff_sigmoid(z[n, j+1]) * sum_err[j]
         
         
         # 출력층 노드와 은닉층 노드를 연결하는 edge의 가중치 gradients (dU2_grads) 계산
