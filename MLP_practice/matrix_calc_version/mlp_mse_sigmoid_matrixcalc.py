@@ -7,8 +7,12 @@ def Sigmoid(x):
     y = 1 / (1 + np.exp(-x))
     return y
 
+def deriv_Sigmoid(x):
+    return x * (1 -x)
+
 def MLP_forward(U1, U2, P, C, x):
     N, D = x.shape #입력 차원
+    
     zsum = np.zeros((N,P+1))
     z = np.zeros((N,P+1))
     osum = np.zeros((N,C))
@@ -18,17 +22,21 @@ def MLP_forward(U1, U2, P, C, x):
         #은닉층의 계산
         zsum[n,0] = 1.0
         z[n,0] = 1.0
-        for j in range(P):
-            zsum[n, j+1] = np.dot(U1[j],np.r_[1,x[n]])
-            z[n,j+1] = Sigmoid(zsum[n, j+1])
+        #for j in range(P):
+        #    zsum[n, j+1] = np.dot(U1[j],np.r_[1,x[n]])
+        #    z[n,j+1] = Sigmoid(zsum[n, j+1])
         # 순환문 아래의 행렬식으로 가능
-        #zsum[n,1:] = np.dot(U1, np.r_[1, x[n]])
-        #z[n] = Sigmoid(zsum[n])
+        zsum[n,1:] = np.dot(U1, np.r_[1, x[n]])
+        z[n] = Sigmoid(zsum[n])
             
         #출력층 계산
-        for k in range(C):
-            osum[n, k] = np.dot(U2[k],z[n])
-            o[n,k] = Sigmoid(osum[n, k])
+        #for k in range(C):
+        #    osum[n, k] = np.dot(U2[k],z[n])
+        #    o[n,k] = Sigmoid(osum[n, k])
+        # 순환문 아래의 행렬식으로 가능
+        osum[n] = np.dot(U2, z[n])
+        o[n] = Sigmoid(osum[n])
+        
     return o, osum, z, zsum
 
 def MLP_backward(U1, U2, P, C, x, y):
@@ -43,33 +51,36 @@ def MLP_backward(U1, U2, P, C, x, y):
     #x = np.concatenate([x0,x], axis=1)
     for n in range(N):
         # 출력층 node의 입력에서 에러값 delta 계산
-        for k in range(C):
-            delta[k] = (y[n,k]-o[n,k])*o[n,k]*(1-o[n,k])
+        #for k in range(C):
+        #    delta[k] = (y[n,k]-o[n,k])*o[n,k]*(1-o[n,k])
         # 순환문 아래의 행렬식으로 가능
-        #delta = (y[n] - o[n])*deriv_Sigmoid(o[n])
+        delta = (y[n] - o[n])*deriv_Sigmoid(o[n])
         
         # 은닉층 node의 입력에서 에러값 eta 계산
         sum_err = np.zeros_like(eta)
-        #t_eta[0] = 0.0
-        for j in range(P):
-            for k in range(C):
-                sum_err[j] = sum_err[j] + U2[k,j+1]*delta[k] #은닉층 j번째 node의 출력에 유입되는 에러값을 계산
-            eta[j] = z[n,j+1]*(1-z[n,j+1])*sum_err[j] #은닉층 j번째 node의 입력의 에러값 계산
+        #for j in range(P):
+        #    for k in range(C):
+        #        sum_err[j] = sum_err[j] + U2[k,j+1]*delta[k] #은닉층 j번째 node의 출력에 유입되는 에러값을 계산
+        #    eta[j] = z[n,j+1]*(1-z[n,j+1])*sum_err[j] #은닉층 j번째 node의 입력의 에러값 계산
+        # 순환문 아래의 행렬식으로 가능
+        sum_err = np.dot(U2.T[1:], delta)
+        eta = sum_err * deriv_Sigmoid(z[n, 1:])
+
         
         # 출력 node와 은닉층 node를 연결하는 edge의 weight 미분값을 계산       
-        for k in range(C):
-            for j in range(P+1):
-                dU2[k,j] = dU2[k,j] - z[n,j]*delta[k]/N # 배치 단위의 delta를 더한 후에 N으로 나눠 평균값을 사용
+        #for k in range(C):
+        #    for j in range(P+1):
+        #        dU2[k,j] = dU2[k,j] - z[n,j]*delta[k]/N # 배치 단위의 delta를 더한 후에 N으로 나눠 평균값을 사용
         # 순환문 아래의 행렬식으로 가능
-        #dU2 = dU2 - np.dot( delta.reshape((-1, 1,)), z[n].reshape((1, -1)) )/N
+        dU2 = dU2 - np.dot( delta.reshape((-1, 1,)), z[n].reshape((1, -1)) )/N
                 
         # 은닉층 node와 입력층 node를 연결하는 edge의 weight 미분값을 계산
         x_ = np.r_[1,x[n]]
-        for j in range(P):
-            for i in range(D+1):
-                dU1[j,i] = dU1[j,i] - x_[i]*eta[j]/N
+        #for j in range(P):
+        #    for i in range(D+1):
+        #        dU1[j,i] = dU1[j,i] - x_[i]*eta[j]/N
         # 순환문 아래의 행렬식으로 가능
-        #dU2 = dU2 - np.dot( eta.reshape((-1, 1,)), x_.reshape((1, -1)) )/N
+        dU1 = dU1 - np.dot( eta.reshape((-1, 1,)), x_.reshape((1, -1)) )/N
 
     return dU1, dU2
 
@@ -195,18 +206,18 @@ for e in range(epoch):
             dU1, dU2 = MLP_backward(U1, U2, P, C, X_train[n*batch_size:], Y_train[n*batch_size:])
         
         # U2 행렬을 업데이트               
-        for k in range(C):
-            for j in range(P+1):
-                U2[k,j] = U2[k,j] - rho*dU2[k,j]
-        #위의 for문 대신 아래의 한줄로 연산 가능
-        #U2 = U2 -rho*dU2
+        #for k in range(C):
+        #    for j in range(P+1):
+        #        U2[k,j] = U2[k,j] - rho*dU2[k,j]
+        #위의 순환문 대신 아래의 한줄로 연산 가능
+        U2 = U2 -rho*dU2
         
         #U1 행렬을 업데이트
-        for j in range(P):
-            for i in range(D+1):
-                U1[j, i] = U1[j,i] - rho*dU1[j,i]
-        #위의 for문 대신 아래의 한줄로 연산 가능
-        #U1 = U1 -rho*dU1                
+        #for j in range(P):
+        #    for i in range(D+1):
+        #        U1[j, i] = U1[j,i] - rho*dU1[j,i]
+        #위의 순환문 대신 아래의 한줄로 연산 가능
+        U1 = U1 -rho*dU1                
     
     e_train = mse_cal(U1, U2, P, C, X_train, Y_train)
     e_test = mse_cal(U1, U2, P, C, X_test, Y_test)
