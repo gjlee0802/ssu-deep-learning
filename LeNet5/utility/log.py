@@ -8,6 +8,10 @@ class Log:
         self.best_accuracy = 0.0
         self.log_each = log_each
         self.epoch = initial_epoch
+        self.loss_history={'train':[], 'valid':[]}
+
+    def get_epoch_loss_history(self):
+        return self.loss_history
 
     def train(self, len_dataset: int) -> None:
         self.epoch += 1
@@ -32,9 +36,11 @@ class Log:
             self._eval_step(loss, accuracy)
 
     def flush(self) -> None:
-        if self.is_train:
+        if self.is_train: # train
             loss = self.epoch_state["loss"] / self.epoch_state["steps"]
             accuracy = self.epoch_state["accuracy"] / self.epoch_state["steps"]
+
+            self.loss_history['train'].append(loss)
 
             print(
                 f"\r┃{self.epoch:12d}  ┃{loss:12.4f}  │{100*accuracy:10.2f} %  ┃{self.learning_rate:12.3e}  │{self._time():>12}  ┃",
@@ -42,9 +48,11 @@ class Log:
                 flush=True,
             )
 
-        else:
+        else: # valid
             loss = self.epoch_state["loss"] / self.epoch_state["steps"]
             accuracy = self.epoch_state["accuracy"] / self.epoch_state["steps"]
+
+            self.loss_history['valid'].append(loss)
 
             print(f"{loss:12.4f}  │{100*accuracy:10.2f} %  ┃", flush=True)
 
@@ -90,7 +98,7 @@ class Log:
         return f"{time_seconds // 60:02d}:{time_seconds % 60:02d} min"
 
     def _print_header(self) -> None:
-        print(f"┏━━━━━━━━━━━━━━┳━━━━━━━╸T╺╸R╺╸A╺╸I╺╸N╺━━━━━━━┳━━━━━━━╸S╺╸T╺╸A╺╸T╺╸S╺━━━━━━━┳━━━━━━━╸V╺╸A╺╸L╺╸I╺╸D╺━━━━━━━┓")
-        print(f"┃              ┃              ╷              ┃              ╷              ┃              ╷              ┃")
-        print(f"┃       epoch  ┃        loss  │    accuracy  ┃        l.r.  │     elapsed  ┃        loss  │    accuracy  ┃")
-        print(f"┠──────────────╂──────────────┼──────────────╂──────────────┼──────────────╂──────────────┼──────────────┨")
+        print(f"┏━━━━━━━━━━━━━━┳━━━━━━━╸T╺╸R╺╸A╺╸I╺╸N╺━━━━━━━┳━━━━━━━╸S╺╸T╺╸A╺╸T╺╸S╺━━━━━━━┳━━━━━━━╸L-O-A-D-I-N-G╺━━━━━━━|━━━━━━━╸V╺╸A╺╸L╺╸I╺╸D╺━━━━━━━┓")
+        print(f"┃              ┃              ╷              ┃              ╷              ┃                             ┃              ╷              ┃")
+        print(f"┃       epoch  ┃        loss  │    accuracy  ┃        l.r.  │     elapsed  ┃             bar             ┃        loss  │    accuracy  ┃")
+        print(f"┠──────────────╂──────────────┼──────────────╂──────────────┼──────────────╂─────────────────────────────┃──────────────┼──────────────┨")
