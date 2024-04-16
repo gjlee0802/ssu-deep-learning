@@ -47,9 +47,9 @@ batch_size = 64
 train_dataloader = DataLoader(training_data, batch_size=batch_size)
 test_dataloader = DataLoader(test_data, batch_size=batch_size)
 
-for X, y in test_dataloader:
-    print(f"Shape of X [N, C, H, W]: {X.shape}")
-    print(f"Shape of y: {y.shape} {y.dtype}")
+for X, y in test_dataloader: # 배치 개수만큼 순회
+    print(f"Shape of X [N, C, H, W]: {X.shape}") # N : 배치크기, C : 채널 수(흑백이라 1이 됨), H : 행의 개수(28), W : 열의 개수(28)
+    print(f"Shape of y: {y.shape} {y.dtype}") # 배치크기만큼 target 값이 있음
     break
 
 
@@ -74,13 +74,18 @@ class CnnNetwork(nn.Module):
     def __init__(self):
         super().__init__()
         
+        # 흑백 이미지라 in_channels=1, 채널 수(=커널 수)는 out_channels=256개, 커널 크기가 3이므로 패딩은 1, 보폭 stride는 디폴트 1
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=256, kernel_size=3, padding=1)
+        # 앞서 풀링층이 있을테지만 conv1에서 오는 피쳐맵 크기에는 변화를 주지 않음.
         self.conv2 = nn.Conv2d(in_channels=256, out_channels=64, kernel_size=3, padding=1)
+        # Flatten을 거치면, 채널/커널 수(64) * 이미지 행크기(7) * 이미지열크기(7)
         self.linear1 = nn.Linear(in_features=64*7*7, out_features=256)
         self.linear2 = nn.Linear(in_features=256,out_features=10)
         self.relu = nn.ReLU()
+        # 보폭 stride가 2이므로 풀링을 거치면 이미지 크기는 절반으로 줄어들게 됨
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         self.softmax = nn.Softmax()
+        # 직렬화를 위해 사용
         self.flatten = nn.Flatten()
 
     def forward(self, x):
@@ -109,7 +114,8 @@ class CnnNetwork(nn.Module):
         
         #output layer
         x = self.linear2(x) #in_features=256, out_features=10
-        #x = self.softmax(x) #in_features=10, out_features=10
+        # 분류문제에서는 CrossEntropy(Lossfunc) + softmax 출력 활성화 함수 조합
+        x = self.softmax(x) #in_features=10, out_features=10
         return x
 
 model = CnnNetwork().to(device)
@@ -149,10 +155,10 @@ def train(dataloader, model, loss_fn, optimizer):
 def test(dataloader, model, loss_fn):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
-    # inference 모드로 실행하기 위해 학습시에 필요한 Drouout, batchnorm등의 기능을 비활성화함
+    # inference 모드로 실행하기 위해 학습시에 필요한 Dropout, batchnorm등의 기능을 비활성화함
     model.eval()
     test_loss, correct = 0, 0
-    with torch.no_grad(): # autograd engine(gradinet를 계산해주는 context)을 비활성화함
+    with torch.no_grad(): # autograd engine(gradient를 계산해주는 context)을 비활성화함
         for X, y in dataloader:
             X, y = X.to(device), y.to(device)
             pred = model(X)
