@@ -129,22 +129,18 @@ class CnnNetwork(nn.Module):
         ##LeNet-5에서 피처맵의 크기와 동일한 크기의 커널을 적용하여 직렬화 했었음.
         ##혹은 numpy의 직렬화 함수를 이용하여 시도해도 됨.
         #Serialization for 2D image * channels
-        '''
-        x = self.flatten(x) # in_img_size=(7,7), in_channels=64
+        #x = self.flatten(x) # in_img_size=(7,7), in_channels=64
                             # out_img_size=(3136,)
-        '''
         
-        '''
-        #직렬화 방법 1: 피처맵 크기와 같은 크기의 커널을 적용한 CNN 층 추가, 이 경우에는 직렬화 되지만 컨볼루션 연산 결과가 직렬화됨.
-        #x : 64, 128, 3,3
-        x = self.conv4(x)
-        x = x.view(-1, 128)
-        
-        #Fully connected layers
-        # 128 크기로 직렬화하였으므로, linear1의 입력 노드를 128로 바꿔줘야 함.
-        x = self.linear1(x) #in_features=128, out_features=256
-        x = self.relu(x) #in_features=256, out_features=256
-        '''
+        ##직렬화 방법 1: 피처맵 크기와 같은 크기의 커널을 적용한 CNN 층 추가, 이 경우에는 직렬화 되지만 컨볼루션 연산 결과가 직렬화됨.
+        ##x : 64, 128, 3,3
+        #x = self.conv4(x)
+        #x = x.view(-1, 128)
+        ##Fully connected layers
+        ## 128 크기로 직렬화하였으므로, linear1의 입력 노드를 128로 바꿔줘야 함.
+        #x = self.linear1(x) #in_features=128, out_features=256
+        #x = self.relu(x) #in_features=256, out_features=256
+        #직렬화 방법 1 END-----
         
         #직렬화 방법 2: reshape 함수를 이용하여 배치크기 x (128*3*3)
         x = x.reshape(x.shape[0], -1)
@@ -228,13 +224,13 @@ def test(dataloader, model, loss_fn):
 #모델은 더 나은 예측을 하기 위해 매개변수를 학습합니다. 각 에폭마다 모델의 정확도(accuracy)와 
 # 손실(loss)을 출력합니다. 에폭마다 정확도가 증가하고 손실이 감소하는 것을 보려고 합니다.
 
-epochs = 200
+#epochs = 200 # 모델 수정 전
+epochs = 70   # 모델 수정 후
+
+train_loss_hist = []
+test_loss_hist = []
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
-    
-    train_loss_hist = []
-    test_loss_hist = []
-    
     train_epoch_loss = train(train_dataloader, model, loss_fn, optimizer)
     train_loss_hist.append(train_epoch_loss)
     test_epoch_loss, _ = test(test_dataloader, model, loss_fn)
@@ -264,8 +260,15 @@ plt.show()
 #모델을 저장하는 일반적인 방법은 (모델의 매개변수들을 포함하여)
 #내부 상태 사전(internal state dictionary)을 직렬화(serialize)하는 것입니다.
 
-torch.save(model.state_dict(), "model.pth")
+torch.save(model.state_dict(), "model_cnn_mid.pth")
 print("Saved PyTorch Model State to model.pth")
+
+
+model = CnnNetwork()
+model.load_state_dict(torch.load("model_cnn_mid.pth"))
+
+model = model.to(device)
+model.eval()
 
 #5. Inference 
 #이제 이 모델을 사용해서 예측을 할 수 있습니다.
@@ -295,12 +298,12 @@ with torch.no_grad():
     for x, y in test_dataloader:
         x = x.to(device)
         pred = model(x)
-        #predicted, actual = classes[pred[0].argmax(0)], classes[y]
-        predicted, actual = classes[pred.argmax(dim=1)], classes[y]
+        #predicted, actual = pred[0].argmax(0), y
+        predicted, actual = pred.argmax(dim=1), y
         
         total += y.size(0)
-        correct += (predicted == actual).sum().item()
-        print(f'Predicted: "{predicted}", Actual: "{actual}"')
+        correct += (predicted.to(device) == actual.to(device)).sum().item()
+        #print(f'Predicted: "{predicted}", Actual: "{actual}"')
 
 accuracy = 100 * correct / total
 print(f'Accuracy on the test set: {accuracy:.3f}%')
