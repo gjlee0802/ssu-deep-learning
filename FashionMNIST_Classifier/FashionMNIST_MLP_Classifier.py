@@ -73,8 +73,8 @@ print(f"Using {device} device")
 class NeuralNetwork(nn.Module):
     def __init__(self):
         super().__init__()
-        self.flatten = nn.Flatten()  
-        self.linear1 = nn.Linear(28*28,512)
+        self.flatten = nn.Flatten()
+        self.linear1 = nn.Linear(28*28,512) # 샘플이 들어왔을 때 입력 벡터 수 (처리하는 데이터 수와는 상관 없는 부분)
         self.linear2 = nn.Linear(512,512)
         self.linear3 = nn.Linear(512,10)
         self.relu = nn.ReLU()
@@ -91,7 +91,10 @@ class NeuralNetwork(nn.Module):
         """
 
     def forward(self, x):
-        x = self.flatten(x)
+        ## 중간 1: 은닉층 추가해보기
+        ## 중간 2: RELU 함수 / Sigmoid 함수 사용했을 때 각각 비교 -> 중간고사 내용 관련됨.
+        
+        x = self.flatten(x) # 64 x 1 x 28 x 28 를 직렬화
         x = self.linear1(x)
         x = self.relu(x)
         x = self.linear2(x)

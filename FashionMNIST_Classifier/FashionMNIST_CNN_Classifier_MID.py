@@ -10,6 +10,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torchvision import datasets
 from torchvision.transforms import ToTensor
+import matplotlib.pyplot as plt
 
 #(2) PyTorch는 TorchText, TorchVision 및 TorchAudio 와 같이 도메인 특화 라이브러리를
 # 데이터셋과 함께 제공하고 있습니다. 이 튜토리얼에서는 TorchVision 데이터셋을 사용하도록
@@ -69,6 +70,7 @@ device = (
 )
 print(f"Using {device} device")
 
+
 # Convolutional Neural Network 모델을 정의합니다.
 class CnnNetwork(nn.Module):
     def __init__(self):
@@ -78,8 +80,16 @@ class CnnNetwork(nn.Module):
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=256, kernel_size=3, padding=1)
         # 앞서 풀링층이 있을테지만 conv1에서 오는 피쳐맵 크기에는 변화를 주지 않음.
         self.conv2 = nn.Conv2d(in_channels=256, out_channels=64, kernel_size=3, padding=1)
-        # Flatten을 거치면, 채널/커널 수(64) * 이미지 행크기(7) * 이미지열크기(7)
-        self.linear1 = nn.Linear(in_features=64*7*7, out_features=256)
+        
+        self.conv3 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1)
+        
+        ##직렬화 방법 1
+        ##self.conv4 = nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, stride=1)
+        
+        # Flatten을 거치면, 채널/커널 수 * 이미지 행크기 * 이미지열크기
+        self.linear1 = nn.Linear(in_features=128*3*3, out_features=256)
+        ##직렬화 방법 1 적용할 경우
+        ##self.linear1 = nn.Linear(in_features=128, out_features=256)
         self.linear2 = nn.Linear(in_features=256,out_features=10)
         self.relu = nn.ReLU()
         # 보폭 stride가 2이므로 풀링을 거치면 이미지 크기는 절반으로 줄어들게 됨
@@ -108,17 +118,38 @@ class CnnNetwork(nn.Module):
                           
         ##중간1: Building Block3을 하나 더 추가하고 설계(하이퍼파라미터 결정) -> 중간고사 내용과 관련됨.
         ## 동일한 풀링층을 사용하면 절반으로 다운샘플링 -> 커널을 그만큼 더 추가하면 다운샘플링 되는 대신 많은 정보를 확보 가능
+        #x : 64, 64, 7, 7
+        x = self.conv3(x)
+        x = self.relu(x)
+        x = self.pool(x)
+        #x : 64, 128, 3, 3
+        
         
         ##중간2: Flatten을 사용하지 않고 직렬화 과정을 다른 방식으로 변형하기 -> 중간고사 내용과 관련됨.
         ##LeNet-5에서 피처맵의 크기와 동일한 크기의 커널을 적용하여 직렬화 했었음.
         ##혹은 numpy의 직렬화 함수를 이용하여 시도해도 됨.
         #Serialization for 2D image * channels
+        '''
         x = self.flatten(x) # in_img_size=(7,7), in_channels=64
                             # out_img_size=(3136,)
-                            
+        '''
+        
+        '''
+        #직렬화 방법 1: 피처맵 크기와 같은 크기의 커널을 적용한 CNN 층 추가, 이 경우에는 직렬화 되지만 컨볼루션 연산 결과가 직렬화됨.
+        #x : 64, 128, 3,3
+        x = self.conv4(x)
+        x = x.view(-1, 128)
+        
         #Fully connected layers
-        x = self.linear1(x) #in_features=3136, out_features=256
+        # 128 크기로 직렬화하였으므로, linear1의 입력 노드를 128로 바꿔줘야 함.
+        x = self.linear1(x) #in_features=128, out_features=256
         x = self.relu(x) #in_features=256, out_features=256
+        '''
+        
+        #직렬화 방법 2: reshape 함수를 이용하여 배치크기 x (128*3*3)
+        x = x.reshape(x.shape[0], -1)
+        
+        x = self.linear1(x)
         
         #output layer
         x = self.linear2(x) #in_features=256, out_features=10
@@ -142,22 +173,33 @@ optimizer = torch.optim.SGD(model.parameters(), lr=1e-2)
 
 def train(dataloader, model, loss_fn, optimizer):
     size = len(dataloader.dataset)
+    running_loss = 0.0
+    
     for batch, (X, y) in enumerate(dataloader):
         X, y = X.to(device), y.to(device)
 
         # 예측 오류 계산
         pred = model(X)
         loss = loss_fn(pred, y)
+        
+        running_loss = running_loss + loss.item()
 
         # 역전파
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-        ##중간 3: 매 에폭마다 전체 Training 데이터셋의 Loss 값을 리스트형에 저장하고, 학습 끝난 후 그래프로 출력하기 -> 중간고사 내용과 관련됨.
+        ## 중간 3: 매 에폭마다 전체 Training 데이터셋의 Loss 값을 리스트형에 저장하고, 학습 끝난 후 그래프로 출력하기 -> 중간고사 내용과 관련됨.
         if batch % 100 == 0:
             loss, current = loss.item(), (batch + 1) * len(X)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+    
+    epoch_loss = running_loss / size
+    
+    return epoch_loss
+        
+    
+        
 
 #(3)모델이 학습하고 있는지를 확인하기 위해 테스트 데이터셋으로 모델의 성능을 확인합니다.
 
@@ -168,7 +210,7 @@ def test(dataloader, model, loss_fn):
     model.eval()
     test_loss, correct = 0, 0
     
-    ##중간 4: 매 에폭마다 Test 데이터셋의 Loss 값을 리스트형에 저장하고, 학습 끝난 후 그래프로 출력하기 -> 중간고사 내용과 관련됨.
+    ## 중간 4: 매 에폭마다 Test 데이터셋의 Loss 값을 리스트형에 저장하고, 학습 끝난 후 그래프로 출력하기 -> 중간고사 내용과 관련됨.
     with torch.no_grad(): # autograd engine(gradient를 계산해주는 context)을 비활성화함
         for X, y in dataloader:
             X, y = X.to(device), y.to(device)
@@ -179,6 +221,8 @@ def test(dataloader, model, loss_fn):
     correct /= size
     print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
     
+    return test_loss, correct
+    
 
 #학습 단계는 여러번의 반복 단계 (에폭(epochs)) 를 거쳐서 수행됩니다. 각 에폭에서는 
 #모델은 더 나은 예측을 하기 위해 매개변수를 학습합니다. 각 에폭마다 모델의 정확도(accuracy)와 
@@ -187,10 +231,32 @@ def test(dataloader, model, loss_fn):
 epochs = 200
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
-    train(train_dataloader, model, loss_fn, optimizer)
-    test(test_dataloader, model, loss_fn)
+    
+    train_loss_hist = []
+    test_loss_hist = []
+    
+    train_epoch_loss = train(train_dataloader, model, loss_fn, optimizer)
+    train_loss_hist.append(train_epoch_loss)
+    test_epoch_loss, _ = test(test_dataloader, model, loss_fn)
+    test_loss_hist.append(test_epoch_loss)
 
 print("Done!")
+
+# plot training loss
+plt.title("Training Loss")
+plt.plot(range(1,epochs+1),train_loss_hist,label="train")
+plt.ylabel("Loss")
+plt.xlabel("Training Epochs")
+plt.legend()
+plt.show()
+
+# plot test loss
+plt.title("Test Loss")
+plt.plot(range(1,epochs+1),test_loss_hist,label="test")
+plt.ylabel("Loss")
+plt.xlabel("Test Epochs")
+plt.legend()
+plt.show()
 
 
 #4. 모델 저장하기
