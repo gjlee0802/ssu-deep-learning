@@ -242,6 +242,7 @@ for t in range(epochs):
 
 print("Done!")
 
+##학습 중의 매 에폭 Loss와 테스트 중의 매 에폭 Loss 히스토리 그래프 출력
 # plot training loss
 plt.title("Training Loss")
 plt.plot(range(1,epochs+1),train_loss_hist,label="train")
@@ -283,14 +284,26 @@ classes = [
 ]
 
 
-# 아래 Inference과정 배치 단위로 바꿔주기
+# INFERENCE
+
+total = 0
+correct = 0
+
 model.eval()
-x, y = test_data[0][0], test_data[0][1]
+#x, y = test_data[0][0], test_data[0][1]
 with torch.no_grad():
-    x = x.to(device)
-    pred = model(x)
-    predicted, actual = classes[pred[0].argmax(0)], classes[y]
-    print(f'Predicted: "{predicted}", Actual: "{actual}"')
+    for x, y in test_dataloader:
+        x = x.to(device)
+        pred = model(x)
+        #predicted, actual = classes[pred[0].argmax(0)], classes[y]
+        predicted, actual = classes[pred.argmax(dim=1)], classes[y]
+        
+        total += y.size(0)
+        correct += (predicted == actual).sum().item()
+        print(f'Predicted: "{predicted}", Actual: "{actual}"')
+
+accuracy = 100 * correct / total
+print(f'Accuracy on the test set: {accuracy:.3f}%')
 
 """
 """
