@@ -1,3 +1,12 @@
+
+########################중간고사 대비 변형####################################
+##  중간1: Building Block3을 하나 더 추가하고 설계(하이퍼파라미터 결정)       ##
+##  중간2: Flatten을 사용하지 않고 직렬화 과정을 다른 방식으로 변형하기        ##
+##  중간3: 매 에폭마다 Training Loss 값을 리스트형에 저장하고, 그래프로 출력   ##
+##  중간4: 매 에폭마다 Test Loss 값을 리스트형에 저장하고, 그래프로 출력       ##
+############################################################################
+
+
 #pytorch를 이용한 간단한 Fashion-MNIST Datatset classifier 구현 
 #1. 데이터 작업하기
 #(1) 파이토치(PyTorch)에는 데이터 작업을 위한 기본 요소 두가지인 
@@ -185,7 +194,7 @@ def train(dataloader, model, loss_fn, optimizer):
         loss.backward()
         optimizer.step()
 
-        ## 중간 3: 매 에폭마다 전체 Training 데이터셋의 Loss 값을 리스트형에 저장하고, 학습 끝난 후 그래프로 출력하기 -> 중간고사 내용과 관련됨.
+        ## 중간3: 매 에폭마다 전체 Training 데이터셋의 Loss 값을 리스트형에 저장하고, 학습 끝난 후 그래프로 출력하기 -> 중간고사 내용과 관련됨.
         if batch % 100 == 0:
             loss, current = loss.item(), (batch + 1) * len(X)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
@@ -206,7 +215,7 @@ def test(dataloader, model, loss_fn):
     model.eval()
     test_loss, correct = 0, 0
     
-    ## 중간 4: 매 에폭마다 Test 데이터셋의 Loss 값을 리스트형에 저장하고, 학습 끝난 후 그래프로 출력하기 -> 중간고사 내용과 관련됨.
+    ## 중간4: 매 에폭마다 Test 데이터셋의 Loss 값을 리스트형에 저장하고, 학습 끝난 후 그래프로 출력하기 -> 중간고사 내용과 관련됨.
     with torch.no_grad(): # autograd engine(gradient를 계산해주는 context)을 비활성화함
         for X, y in dataloader:
             X, y = X.to(device), y.to(device)
