@@ -37,12 +37,13 @@ def perceptron_learning(X1,Y, W, alpah=0.2, epoch=10): # perceptron 학습 함�
                 error_samples.append((X[j], Y[j]))
         
         # 틀린 sample에 관해 에러와 입력벡터의 곱의 합을 구함
-        sum = np.zeros(3,dtype=np.float64) 
+        sum = np.zeros(3,dtype=np.float64) # sum은 가중치 각각에 대한 gradient 합계를 저장함
         for x, y in error_samples:
             print(f'y : {y}')
             print(f'x : {x}')
             
-            sum = sum + y*x
+            # y * x 는 퍼셉트론 목적함수 설계에 의해 결정된 gradient 식
+            sum = sum + y*x 
             #sum[0] = sum[0] + y*x[0]
             #sum[1] = sum[1] + y*x[1]
             #sum[2] = sum[2] + y*x[2]
@@ -64,7 +65,9 @@ def perceptron_inference(X1,W):
     
     inferences = []
     for x in X:
-        inferences.append((x[1:3], step_function(np.dot(x,W))))
+        # x[0]는 bias 입력(1.0)이므로 제외
+        # 최종 학습된 가중치와 입력을 곱하여 계단함수 적용한 값이 예측값이 됨.
+        inferences.append((x[1:], step_function(np.dot(x,W))))
 
     return inferences
 
