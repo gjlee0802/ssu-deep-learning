@@ -3,6 +3,7 @@
 ##  중간 1: 은닉층 추가해보기                                    ##
 ##  중간 2: RELU 함수 / Sigmoid 함수 사용했을 때 각각 비교        ##
 #################################################################
+# -> Relu 대신 Sigmoid를 사용했을 때 Loss가 줄어들지 않으며, Accuracy가 증가하지 않음.
 
 
 #pytorch를 이용한 간단한 Fashion-MNIST Datatset classifier 구현 

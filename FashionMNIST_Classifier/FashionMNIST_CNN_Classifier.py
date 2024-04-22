@@ -218,6 +218,8 @@ classes = [
 
 
 # 아래 Inference과정 배치 단위로 바꿔주기
+''''
+#Wrong code : model에 들어가는 x는 배치단위여야 함.
 model.eval()
 x, y = test_data[0][0], test_data[0][1]
 with torch.no_grad():
@@ -225,6 +227,27 @@ with torch.no_grad():
     pred = model(x)
     predicted, actual = classes[pred[0].argmax(0)], classes[y]
     print(f'Predicted: "{predicted}", Actual: "{actual}"')
+'''
+# INFERENCE
+
+total = 0
+correct = 0
+
+model.eval()
+#x, y = test_data[0][0], test_data[0][1]
+with torch.no_grad():
+    for x, y in test_dataloader:
+        x = x.to(device)
+        pred = model(x)
+        #predicted, actual = pred[0].argmax(0), y
+        predicted, actual = pred.argmax(dim=1), y
+        
+        total += y.size(0)
+        correct += (predicted.to(device) == actual.to(device)).sum().item()
+        #print(f'Predicted: "{predicted}", Actual: "{actual}"')
+
+accuracy = 100 * correct / total
+print(f'Accuracy on the test set: {accuracy:.3f}%')
 
 """
 """
