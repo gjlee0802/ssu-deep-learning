@@ -199,7 +199,7 @@ def train(dataloader, model, loss_fn, optimizer):
             loss, current = loss.item(), (batch + 1) * len(X)
             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
     
-    epoch_loss = running_loss / size # 1 에폭 당 손실은 1 배치 내 순회의 running_loss 합산에 배치 크기로 나눠주어 계산함.
+    epoch_loss = running_loss / size # 1 에폭 당 손실은 1 배치 내 순회의 running_loss 누적에 전체 학습 데이터셋 크기로 나눠줌
     
     return epoch_loss
         
