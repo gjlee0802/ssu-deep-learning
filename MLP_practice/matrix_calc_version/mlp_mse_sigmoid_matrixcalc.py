@@ -72,7 +72,8 @@ def MLP_backward(U1, U2, P, C, x, y):
         #    for j in range(P+1):
         #        dU2[k,j] = dU2[k,j] - z[n,j]*delta[k]/N # 배치 단위의 delta를 더한 후에 N으로 나눠 평균값을 사용
         # 순환문 아래의 행렬식으로 가능
-        dU2 = dU2 - np.dot( delta.reshape((-1, 1,)), z[n].reshape((1, -1)) )/N
+        # reshape((-1, 1)) 의미 : 열에 대한 차원은 1로 지정하고 행에 대한 0번째 차원은 알아서 지정하라는 의미
+        dU2 = dU2 - np.dot( delta.reshape((-1, 1)), z[n].reshape((1, -1)) )/N
                 
         # 은닉층 node와 입력층 node를 연결하는 edge의 weight 미분값을 계산
         x_ = np.r_[1,x[n]]

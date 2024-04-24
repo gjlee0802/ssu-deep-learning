@@ -2,57 +2,50 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
+epsilon = 1e-3
 # 시그모이드 함수 ------------------------
 def Sigmoid(x):
     y = 1 / (1 + np.exp(-x))
     return y
 
-#시그모이드 함수 미분
 def deriv_Sigmoid(x):
-    return x*(1-x)      
+    return x * (1-x)
+
+def Relu(x):   
+    return np.maximum(0,x)
+
+def deriv_Relu(x):      
+    if x.any() >=0:
+        dout = 1
+    else:
+        dout = 0        
+    return dout
     
+  
 def MLP_forward(U1, U2, P, C, x):
     N, D = x.shape #입력 차원
-    
-    x0 = np.ones((N,1))
-    x = np.concatenate([x0,x],axis=1) # x의 차원은 (N,D+1)임
-
-    zsum0 = np.ones((N,1))
-    zsum = np.zeros((N,P))
-    zsum = np.concatenate([zsum0,zsum],axis=1) # zsum의 차원은 (N,P+1)임
-    #zsum = np.zeros((N,P+1))
+    zsum = np.zeros((N,P+1))
     z = np.zeros((N,P+1))
     osum = np.zeros((N,C))
     o = np.zeros((N,C))
     
-    
     for n in range(N):
         #은닉층의 계산
-        #zsum[n,0] = 1.0
+        zsum[n,0] = 1.0
         z[n,0] = 1.0
-        for j in range(P):
-            #zsum[n, j+1] = np.dot(U1[j],np.r_[1,x[n]])
-            zsum[n, j+1] = np.dot(U1[j],x[n])
-            z[n,j+1] = Sigmoid(zsum[n, j+1])
-        
-        #순환문을 행렬식으로 변경
-        #zsum[n,1:] = np.dot(U1,np.r_[1,x[n]])
-        #z[n] = Sigmoid(zsum[n])
+        #for j in range(P):
+        #    zsum[n,j+1] = np.dot(U1[j],np.r_[1,x[n]])
+        #    z[n,j+1] = Sigmoid(zsum[n, j+1])
+        zsum[n, 1:] = np.dot(U1, np.r_[1,x[n]])
+        z[n, 1:] = Sigmoid(zsum[n, 1:])
         
         #출력층 계산
-        for k in range(C):
-            osum[n, k] = np.dot(U2[k],z[n])
-            o[n,k] = Sigmoid(osum[n, k])
-        #순환문을 행렬식으로 변경
-        #osum[n] = np.dot(U2,z[n])
-        #o[n] = Sigmoid(osum[n])
-    
-    #행렬식 계산
-    #zsum[:,1:] = np.dot(x,U1.T)
-    #z=Sigmoid(zsum)
-    #osum = np.dot(z,U2.T)
-    #o =  Sigmoid(osum)
-
+        #for k in range(C):
+        #    osum[n,k] = np.dot(U2[k],z[n])
+        #    o[n,k] = Relu(osum[n,k]) # Sigmoid 대신 Relu
+        osum[n] = np.dot(U2, z[n])
+        o[n] = Relu(osum[n])
+        
     return o, osum, z, zsum
 
 def MLP_backward(U1, U2, P, C, x, y):
@@ -62,59 +55,37 @@ def MLP_backward(U1, U2, P, C, x, y):
     delta = np.zeros(C)
     eta = np.zeros(P)    
     
-    o, _, z, _ = MLP_forward(U1,U2,P,C,x)
-    #x0 = np.ones((N,1))
-    #x = np.concatenate([x0,x], axis=1)
+    o, osum, z, zsum = MLP_forward(U1,U2,P,C,x)
     for n in range(N):
-        ### 출력층 node의 입력에서 에러값 delta 계산
-        ### delta를 순환문으로 계산
-        for k in range(C):
-            delta[k] = (y[n,k]-o[n,k])*deriv_Sigmoid(o[n,k])
-        
-        ### delta를 행렬식으로 계산
-        #delta = (y[n]-o[n])*deriv_Sigmoid(o[n])
-        
-        ### 은닉층 node의 입력에서 에러값 eta 계산
-        ### sum error 및 eta를 순환문으로 계산
+        # 출력층 node의 입력에서 에러값 delta 계산
+        #for k in range(C):
+        #    delta[k] = (y[n,k]-o[n,k])*deriv_Relu(osum[n,k])
+        delta = (y[n] - o[n]) * deriv_Relu(o[n])
+            
+        # 은닉층 node의 입력에서 에러값 eta 계산
         sum_err = np.zeros_like(eta)
-        for j in range(P):
-            for k in range(C):
-                sum_err[j] = sum_err[j] + U2[k,j+1]*delta[k] #은닉층 j번째 node의 출력에 유입되는 에러값을 계산
-            eta[j] = sum_err[j]*deriv_Sigmoid(z[n,j+1]) #은닉층 j번째 node의 입력의 에러값 계산
+        #t_eta[0] = 0.0
         
-        # 은닉노드의 출력측에서 에러값
-        #sum_err[0] = U2[0,1]*delta[0] + U2[1,1]*delta[1]
-        #sum_err[1] = U2[0,2]*delta[0] + U2[1,2]*delta[1]
+        #for j in range(P):
+        #    for k in range(C):
+        #        sum_err[j] = sum_err[j] + U2[k,j+1]*delta[k] #은닉층 j번째 node의 출력에 유입되는 에러값을 계산
+        #    eta[j] = z[n,j+1]*(1-z[n,j+1])*sum_err[j] #은닉층 j번째 node의 입력의 에러값 계산, 시그모이드 함수의 미분값
+        sum_err = np.dot(U2.T[1:], delta)
+        eta = sum_err * deriv_Sigmoid(z[n,1:])
         
-        ### sum error 및 eta를 행렬식으로 계산
-        #sum_err = np.dot(U2.T[1:], delta) #은닉층 node들의 출력 측에서 유입되는 에러값을 계산
-        #eta = sum_err*deriv_Sigmoid(z[n,1:]) #은닉층 node의 입력 측에서 에러값 계산
+        # 출력 node와 은닉층 node를 연결하는 edge의 weight 미분값을 계산       
+        #for k in range(C):
+        #    for j in range(P+1):
+        #        dU2[k,j] = dU2[k,j] - z[n,j]*delta[k]/N # N으로 나눠 delta의 평균
+        # reshape((-1, 1)) 의미 : 열에 대한 차원은 1로 지정하고 행에 대한 0번째 차원은 알아서 지정하라는 의미
+        dU2 = dU2 - np.dot(delta.reshape(-1, 1), z[n].reshape(1, -1)) / N
         
-        
-        ### 출력 node와 은닉층 node를 연결하는 edge의 weight 미분값을 계산       
-        ### dU2 순환문을 사용한 계산
-        for k in range(C):
-            for j in range(P+1):
-                dU2[k,j] = dU2[k,j] - delta[k]*z[n,j]/N
-        #dU2[0,0] = dU2[0,0] -delta[0]*z[n,0]/N, dU2[0,1] = dU2[0,1] -delta[0]*z[n,1]/N, dU2[0,2] = dU2[0,2] -delta[0]*z[n,2]/N 
-        #dU2[1,0] = dU2[1,0] -delta[1]*z[n,0]/N, dU2[1,1] = dU2[1,1] -delta[1]*z[n,1]/N, dU2[1,2] = dU2[1,2] -delta[1]*z[n,3]/N 
-        
-        ### dU2 행렬식을 이용한 계산
-        #dU2 = dU2 - np.dot(delta.reshape((-1,1)),z[n].reshape((1,-1)))/N
-                      
-        ### 은닉층 node와 입력층 node를 연결하는 edge의 weight 미분값을 계산
-        ### dU1을 순환문으로 계산
-        #D=2, D+1 =3, i=0~2
-        #P=2, j=0~1
+        # 은닉층 node와 입력층 node를 연결하는 edge의 weight 미분값을 계산
         x_ = np.r_[1,x[n]]
-        for j in range(P):
-            for i in range(D+1):
-                dU1[j,i] = dU1[j,i] - eta[j]*x_[i]/N
-        #dU1[0,0] = dU1[0,0] -eta[0]*x[n,0]/N, dU1[0,1] = dU1[0,1] -eta[0]*x[n,1]/N, dU1[0,2] = dU1[0,2] -eta[0]*x[n,2]/N 
-        #dU1[1,0] = dU1[1,0] -eta[1]*x[n,0]/N, dU1[1,1] = dU1[1,1] -eta[1]*x[n,1]/N, dU1[1,2] = dU1[1,2] -eta[1]*x[n,3]/N 
-   
-       ### dU1를 행렬식으로 계산
-       # dU1 = dU1 - np.dot(eta.reshape((-1,1)),x_.reshape((1,-1)))/N
+        #for j in range(P):
+        #    for i in range(D+1):
+        #        dU1[j,i] = dU1[j,i] - x_[i]*eta[j]/N
+        dU1 = dU1 - np.dot(eta.reshape(-1, 1), x_.reshape(1, -1)) / N
 
     return dU1, dU2    
 
@@ -124,7 +95,7 @@ def mse_cal(U1, U2, P, C, X, Y):
     mse = np.square(Y.reshape(-1)- output.reshape(-1)).mean()
     return mse
 
-np.random.seed(seed=1) # 난수를 고정
+np.random.seed(seed=100) # 난수를 고정
 N = 400 # 데이터의 수
 K = 2 # 분포의 수
 Y = np.zeros((N, 2), dtype=np.uint8)
@@ -166,10 +137,10 @@ def Show_MLP_Contour(U1, U2, P, C):
     x1 = np.linspace(X_range1[0],X_range1[1], xn)
     xx0,xx1 = np.meshgrid(x0,x1)
     x = np.c_[np.reshape(xx0,xn*xn), np.reshape(xx1,xn*xn)]
-    output, _, _, _ = MLP_forward(U1,U2,P,C,x)
+    o, _, _, _ = MLP_forward(U1,U2,P,C,x)
     plt.figure(1, figsize=(4,4))
     for ic in range(C):
-        f = output[:,ic]
+        f = o[:,ic]
         f = f.reshape(xn, xn)
         f = f.T
         cont = plt.contour(xx0, xx1, f, levels=[0.8, 0.9],
@@ -208,15 +179,14 @@ plt.show()
 P = 2
 C = 2
 D = 2
-
 np.random.seed(seed=100)
 U1 = np.random.randn(P*(D+1))
 U1 = U1.reshape(P,D+1)
 U2 = np.random.randn(C*(P+1))
 U2 = U2.reshape(C,P+1)
 
-rho = 0.1 # learning rate
-epoch = 300 
+rho = 0.01 # learning rate
+epoch = 300
 N, D = X_train.shape #traing dataset size
 batch_size = 1
 batch_num = X_train.shape[0] // batch_size
@@ -238,15 +208,15 @@ for e in range(epoch):
             dU1, dU2 = MLP_backward(U1, U2, P, C, X_train[n:], Y_train[n:])
         
         # U2 행렬을 업데이트               
-        for k in range(C):
-            for j in range(P+1):
-                U2[k,j] = U2[k,j] - rho*dU2[k,j]
-        #U2 = U2 -rho*dU2
+        #for k in range(C):
+        #    for j in range(P+1):
+        #        U2[k,j] = U2[k,j] - rho*dU2[k,j]
+        U2 = U2 -rho*dU2
         #U1 행렬을 업데이트
-        for j in range(P):
-            for i in range(D+1):
-                U1[j, i] = U1[j,i] - rho*dU1[j,i]
-        #U1 = U1 -rho*dU1                
+        #for j in range(P):
+        #    for i in range(D+1):
+        #        U1[j, i] = U1[j,i] - rho*dU1[j,i]
+        U1 = U1 -rho*dU1
     
     e_train = mse_cal(U1, U2, P, C, X_train, Y_train)
     e_test = mse_cal(U1, U2, P, C, X_test, Y_test)
@@ -261,7 +231,7 @@ calculation_time = time.time() - startTime
 print(f"Calculation time:{calculation_time:0.3f} sec\n")
 
 print(f"Final Updated U1 Matrix:{U1}\n")
-print(f"Final Updated U1 Matrix:{U2}\n")
+print(f"Final Updated U2 Matrix:{U2}\n")
 
 plt.figure(1,figsize=(3,3))
 plt.plot(error_train, 'black', label='training')
@@ -269,7 +239,7 @@ plt.plot(error_test,'cornflowerblue', label='test')
 plt.legend()
 plt.show()
 
-#inference 과정
+
 infer_train, _, _, _ = MLP_forward(U1,U2,P,C,X_train)
 infer_test, _, _, _ = MLP_forward(U1,U2,P,C,X_test)
 
