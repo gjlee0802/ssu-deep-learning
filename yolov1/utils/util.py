@@ -50,30 +50,30 @@ def decoder(prediction):
     # tensor의 5번째와 10번재 plane 축 분리, 각각 [14,14] 크기를 갖는 tensor임
     # 두 tensor의 마지막 축을 하나 더 만들, [14,14,1]
     # 이 축을 중심으로 두 tensor들을 concatenation함, contain=[14,14,2]
-    prediction = prediction.data.squeeze()  # 14x14x30
-    contain1 = prediction[:, :, 4].unsqueeze(2)
-    contain2 = prediction[:, :, 9].unsqueeze(2)
+    prediction = prediction.data.squeeze()  # (batch_numx14x14x30) -> (14x14x30) tensor
+    contain1 = prediction[:, :, 4].unsqueeze(2) # (14x14) -> (14x14x1), 병합하기 위해 차원을 추가
+    contain2 = prediction[:, :, 9].unsqueeze(2) # (14x14) -> (14x14x1), 병합하기 위해 차원을 추가
     contain = torch.cat((contain1, contain2), 2)
     # contain의 값이 0.1를 갖는 성분들은 true값을 갖고 그렇지 않은 성분을 false로 set함
     mask1 = contain > 0.1
     # contain의 각 grid cell별로 confidence score의 max 값과 같은 bbox 위치에 mask2에
     # true값을 set함 그렇지 않은 bbox 위치에 false값을 set함
-    mask2 = (contain == contain.max())
+    mask2 = (contain == contain.max()) # 두개의 BBOX의 confidence 값 중에 더 큰 값을 선택함.
     #mask1과 mask2의 성분별 덧셈을 수행하고 0보다 큰 성분에 대해 mask에 true, 
     #그렇지 않은 mask위치에 false값을 설정
     mask = (mask1 + mask2).gt(0)
     for i in range(grid_num):
         for j in range(grid_num):
-            for b in range(2):
-                if mask[i, j, b] == 1:
+            for b in range(2): # 두개의 BBOX에 대해 순회
+                if mask[i, j, b] == 1: # 둘 중에 선택한 BBOX에 대해서...
                     #mask tensor에서 grid cell의 bbox에서 값이 true인 경우에 다음 수행
                     #예측 output tensor로부터 bbox를 시작점과 끝점을 갖는 bbox로 변환
                     box = prediction[i, j, b * 5:b * 5 + 4]
-                    contain_prob = torch.FloatTensor([prediction[i, j,b * 5 + 4]]).to(device)
-                    xy = torch.FloatTensor([j, i]) * cell_size
-                    box[:2] = box[:2] * cell_size + xy.to(device)
+                    contain_prob = torch.FloatTensor([prediction[i, j,b * 5 + 4]]).to(device) # 선택한 BBOX의 confidence 값
+                    xy = torch.FloatTensor([j, i]) * cell_size      # grid cell의 시작점
+                    box[:2] = box[:2] * cell_size + xy.to(device)   # BBOX의 중심점
                     box_xy = torch.FloatTensor(box.size())
-                    box_xy[:2] = box[:2] - 0.5 * box[2:]
+                    box_xy[:2] = box[:2] - 0.5 * box[2:] # 넓이와 높이 표현을 시작점과 끝점 표현으로 변환
                     box_xy[2:] = box[:2] + 0.5 * box[2:]
                     #bbox의 분류값과 confidence score 계산
                     max_prob, cls_index = torch.max(prediction[i, j, 10:], 0)
@@ -147,12 +147,12 @@ def predict(model, img_name, root_path=''):
     img = img[None, :, :, :]
     img = img.to(device)
 
-    prediction = model(img).to(device)  # 1x14x14x30
+    prediction = model(img).to(device)  # 1x14x14x30, 배치 단위가 아닌 한장의 이미지를 넣기 때문에 맨 앞 차원수가 1임
     boxes, cls_indexes, confidences = decoder(prediction)
 
     #정규화되고 시작점과 끝점으로 표현된 bbox를 original image 상에서 크기로 변환함
     for i, box in enumerate(boxes):
-        x1 = int(box[0] * w)
+        x1 = int(box[0] * w) # 0에서 1 사이의 값으로 normalization된 값을 본래의 값으로 복구
         x2 = int(box[2] * w)
         y1 = int(box[1] * h)
         y2 = int(box[3] * h)

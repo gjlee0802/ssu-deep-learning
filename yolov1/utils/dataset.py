@@ -69,6 +69,7 @@ class Dataset(data.Dataset):
         # plt.show()
         # # debug
 
+        ## 448 x 448
         h, w, _ = img.shape
         boxes /= torch.Tensor([w, h, w, h]).expand_as(boxes)
         img = self.BGR2RGB(img)
@@ -78,6 +79,7 @@ class Dataset(data.Dataset):
         for t in self.transform:
             img = t(img)
 
+        ## target : S*S*(B*5+C) == S*S*30 크기의 tensor -> 강의자료 38페이지 최종 출력 형식 슬라이드 참고
         return img, target
 
     def __len__(self):
@@ -87,22 +89,26 @@ class Dataset(data.Dataset):
         grid_num = 14
         target = torch.zeros((grid_num, grid_num, 30))
         cell_size = 1. / grid_num
+        ##끝점 - 시작점 : 넓이와 높이에 대한 계산 -> 시작점과 끝점 표현을 넓이와 높이 표현으로 변환
         wh = boxes[:, 2:] - boxes[:, :2]
         cxcy = (boxes[:, 2:] + boxes[:, :2]) / 2
         for i in range(cxcy.size()[0]):
             cxcy_sample = cxcy[i]
-            #grid cell의 Y축과 X축의 index 계산
+            #grid cell의 Y축과 X축의 index 계산 -> grid cell에 대한 ij 정보로 어느 grid cell에 속하는지 알 수 있음.
             ij = (cxcy_sample / cell_size).ceil() - 1
+            
             #grid cell의 2개 bbox의  confidence score을 1로 set
-            target[int(ij[1]), int(ij[0]), 4] = 1
-            target[int(ij[1]), int(ij[0]), 9] = 1
+            target[int(ij[1]), int(ij[0]), 4] = 1 ## 5번째 값이 BBOX1의 confidence score
+            target[int(ij[1]), int(ij[0]), 9] = 1 ## 10번째 값이 BBOX2의 confidence score
+            
             #grid cell의 class probability을 1로 set
-            target[int(ij[1]), int(ij[0]), int(labels[i]) + 9] = 1
+            target[int(ij[1]), int(ij[0]), int(labels[i]) + 9] = 1 ## 해당되는 라벨의 인덱스의 목표값을 1로 세팅
+            
             #bbox의 중심점 (cx,cy)를 (i,j) grid cell의 원점으로 부터
             # offset값으로 (delta_x, delta_y) 계산하고 target 행렬 tensor의 
             # (i,j) grid cell 위치에 정규화한 bbox정보를 저장
-            xy = ij * cell_size
-            delta_xy = (cxcy_sample - xy) / cell_size
+            xy = ij * cell_size ## grid cell의 시작점
+            delta_xy = (cxcy_sample - xy) / cell_size ## grid cell 내에서의 BBOX 중심의 offset
             target[int(ij[1]), int(ij[0]), 2:4] = wh[i]
             target[int(ij[1]), int(ij[0]), :2] = delta_xy
             target[int(ij[1]), int(ij[0]), 7:9] = wh[i]

@@ -63,9 +63,9 @@ class yoloLoss(Module):
         # grid cell 위치에 true값을 갖는 mask tensor임
         #index tensor는 물체가 위치하는 batch image 위치와 grid cell에서
         # 좌표값의 index를 갖음
-        obj_mask = (target_boxes[..., 4] > 0).byte() 
-        sig_mask = obj_mask[..., 1].bool()
-        index = torch.where(sig_mask == True)
+        obj_mask = (target_boxes[..., 4] > 0).byte()  # (-1, 14, 14, 2) tensor
+        sig_mask = obj_mask[..., 1].bool() # confidence socre 값이 1 이상의 값을 갖는 경우 해당 셀마다 값을 True로 지정, (-1, 14, 14) tensor
+        index = torch.where(sig_mask == True) # BBOX를 포함하는 grid cell의 인덱스
         #object가 위치하는 grid cell마다 2개 bbox와 ground truth bbox(이하 GT)와
         # IOU값을 계산하고 예측된 2 bbox중 IOU가 최대인 bbox를 찾아 GT bbox를 예측한 
         # bbox로 선정함.
