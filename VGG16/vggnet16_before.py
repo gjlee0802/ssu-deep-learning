@@ -8,25 +8,15 @@ import time
 import matplotlib.pyplot as plt
 
 # 1. 데이터 전처리 및 로드
-# 데이터 전처리 및 로드
-train_transform = transforms.Compose([
-    transforms.Grayscale(num_output_channels=3),  # 흑백 이미지를 RGB 이미지로 변환
-    transforms.Resize((224, 224)),  # 이미지 크기를 224x224로 조정
-    transforms.RandomHorizontalFlip(),  # 무작위로 이미지를 수평으로 뒤집음
-    transforms.RandomCrop(224),  # 이미지를 무작위로 자름
-    transforms.ToTensor(),
-    transforms.Normalize((0.5,), (0.5,))
-])
-
-test_transform = transforms.Compose([
+transform = transforms.Compose([
     transforms.Grayscale(num_output_channels=3),  # 흑백 이미지를 RGB 이미지로 변환
     transforms.Resize((224, 224)),  # 이미지 크기를 224x224로 조정
     transforms.ToTensor(),
     transforms.Normalize((0.5,), (0.5,))
 ])
 
-train_set = datasets.FashionMNIST(root='./data', train=True, download=True, transform=train_transform)
-test_set = datasets.FashionMNIST(root='./data', train=False, download=True, transform=test_transform)
+train_set = datasets.FashionMNIST(root='./data', train=True, download=True, transform=transform)
+test_set = datasets.FashionMNIST(root='./data', train=False, download=True, transform=transform)
 
 train_loader = torch.utils.data.DataLoader(train_set, batch_size=64, shuffle=True)
 test_loader = torch.utils.data.DataLoader(test_set, batch_size=64, shuffle=False)
@@ -39,6 +29,7 @@ for param in vgg.parameters():
     param.requires_grad = False
 
 # 새로운 분류기 추가
+'''
 vgg.classifier = nn.Sequential(
     nn.Linear(25088, 4096),  # 입력 크기는 features 층의 출력 크기와 동일해야 합니다.
     nn.ReLU(True),
@@ -48,9 +39,10 @@ vgg.classifier = nn.Sequential(
     nn.Dropout(),
     nn.Linear(512, 10)  # 10은 Fashion-MNIST의 클래스 수입니다.
 )
+'''
 
 # 마지막 fully connected layer를 수정하여 Fashion-MNIST에 맞는 출력을 가지도록 합니다. 수정전 전이학습만 이용할 때는 아래 코드 필요
-#vgg.classifier[6] = nn.Linear(4096, 10)  # 10은 Fashion-MNIST의 클래스 수입니다.
+vgg.classifier[6] = nn.Linear(4096, 10)  # 10은 Fashion-MNIST의 클래스 수입니다.
 
 # 4. 모델 학습
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -98,7 +90,7 @@ end_time = time.time()  # 전체 학습의 종료 시간 기록
 total_duration = end_time - start_time  # 전체 학습의 총 수행 시간 계산
 print(f"Finished Training in {total_duration:.2f} seconds")
 
-torch.save(vgg.state_dict(), f'vgg_modified_{num_epochs}epochs.pt')
+torch.save(vgg.state_dict(), f'vgg_original_{num_epochs}epochs.pt')
 
 # Cost function 추세를 그래프로 그리기
 plt.plot(range(1, num_epochs+1), losses, marker='o', linestyle='-')

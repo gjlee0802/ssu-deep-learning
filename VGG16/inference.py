@@ -6,9 +6,8 @@ from torchvision import datasets, transforms, models
 from torchsummary import summary
 import time
 import matplotlib.pyplot as plt
+import random
 
-# 1. 데이터 전처리 및 로드
-# 데이터 전처리 및 로드
 train_transform = transforms.Compose([
     transforms.Grayscale(num_output_channels=3),  # 흑백 이미지를 RGB 이미지로 변환
     transforms.Resize((224, 224)),  # 이미지 크기를 224x224로 조정
@@ -54,59 +53,11 @@ vgg.classifier = nn.Sequential(
 
 # 4. 모델 학습
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+if device=="cuda": torch.cuda.empty_cache()
+#device = "cpu"
 vgg.to(device)
 
-# 모델 summary를 확인합니다.
-
-summary(vgg, input_size=(3, 224, 224))
-
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(vgg.parameters(), lr=0.001)
-
-num_epochs = 10
-
-losses = []  # 각 epoch에 대한 loss를 저장할 리스트
-start_time = time.time()
-
-for epoch in range(num_epochs):
-    running_loss = 0.0
-    start_epoch_time = time.time()  # 각 epoch의 시작 시간 기록
-    for i, data in enumerate(train_loader, 0):
-        inputs, labels = data
-        inputs, labels = inputs.to(device), labels.to(device)
-
-        optimizer.zero_grad()
-
-        outputs = vgg(inputs)
-        loss = criterion(outputs, labels)
-        loss.backward()
-        optimizer.step()
-
-        running_loss += loss.item()
-        if i % 100 == 99:  # 매 100 배치마다 출력
-            print(f"[{epoch + 1}, {i + 1}] loss: {running_loss / 100:.3f}")
-            running_loss = 0.0
-    
-    epoch_loss = running_loss / len(train_loader)  # 각 에포크의 평균 loss 계산
-    losses.append(epoch_loss)  # 각 에포크의 평균 loss를 리스트에 저장
-    
-    end_epoch_time = time.time()  # 각 epoch의 종료 시간 기록
-    epoch_duration = end_epoch_time - start_epoch_time  # 각 epoch의 수행 시간 계산
-    print(f"[Epoch {epoch+1}] Loss : {epoch_loss}, Time cost : {epoch_duration:.2f} seconds")
-    
-end_time = time.time()  # 전체 학습의 종료 시간 기록
-total_duration = end_time - start_time  # 전체 학습의 총 수행 시간 계산
-print(f"Finished Training in {total_duration:.2f} seconds")
-
-torch.save(vgg.state_dict(), f'vgg_modified_{num_epochs}epochs.pt')
-
-# Cost function 추세를 그래프로 그리기
-plt.plot(range(1, num_epochs+1), losses, marker='o', linestyle='-')
-plt.xlabel('Epoch')
-plt.ylabel('Loss')
-plt.title('Training Loss Trend')
-plt.grid(True)
-plt.show()
+vgg.load_state_dict(torch.load('vgg_modified_10epochs.pt'))
 
 # 5. 모델 성능 평가
 correct = 0
@@ -141,7 +92,9 @@ with torch.no_grad():
         #images = images.cpu()
         #labels = labels.cpu()
         #predicted = predicted.cpu()
+
         # 올바르게 분류된 샘플과 잘못 분류된 샘플을 구분하여 저장
+        
         for i in range(len(predicted)):
             if predicted[i] == labels[i]:
                 correct_list.append((images[i].cpu(), labels[i].cpu(), predicted[i].cpu()))
