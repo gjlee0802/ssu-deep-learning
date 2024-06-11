@@ -48,7 +48,7 @@ def decoder(prediction):
     #각 image의 output tensor를 batch 축을 제거하고 [14,14,30] tensor로 변환
     # output tensor [14,14,30]로부 부터 bbox의 confidence score를 포함하는
     # tensor의 5번째와 10번재 plane 축 분리, 각각 [14,14] 크기를 갖는 tensor임
-    # 두 tensor의 마지막 축을 하나 더 만들, [14,14,1]
+    # 두 tensor의 마지막 축을 하나 더 만듦, [14,14,1]
     # 이 축을 중심으로 두 tensor들을 concatenation함, contain=[14,14,2]
     prediction = prediction.data.squeeze()  # (batch_numx14x14x30) -> (14x14x30) tensor
     contain1 = prediction[:, :, 4].unsqueeze(2) # (14x14) -> (14x14x1), 병합하기 위해 차원을 추가

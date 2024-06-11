@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 
 from torchvision.datasets.cifar import CIFAR10
 from torchvision.transforms import Compose
-git 
+
 from torchvision.transforms import ToTensor,ToPILImage
 from torchvision.transforms import RandomHorizontalFlip, RandomCrop, Normalize
 
